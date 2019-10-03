@@ -1,0 +1,12 @@
+[package]
+name = "esp32-wasm"
+version = "0.1.0"
+repository = "https://github.com/ryankurte/rust-esp32-wasm"
+authors = ["ryan kurte <ryan@kurte.nz>"]
+edition = "2018"
+license = "GPL-3.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+log = "0.4.8"

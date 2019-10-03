@@ -1,0 +1,16 @@
+[package]
+name = "esp32-wasm-example"
+version = "0.1.0"
+authors = ["ryan kurte <ryan@kurte.nz>"]
+repository = "https://github.com/ryankurte/rust-esp32-wasm"
+edition = "2018"
+license = "GPL-3.0"
+
+
+[dependencies]
+log = "0.4.8"
+esp32-wasm = { path = "../lib" }
+
+[profile.release]
+opt-level = "z"
+lto = true

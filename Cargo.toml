@@ -1,0 +1,11 @@
+
+[workspace]
+
+members = [
+    "lib",
+    "example",
+]
+
+[patch.crates-io]
+esp32-wasm = { path = "./lib" }
+
