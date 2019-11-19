@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "example"
+name = "esp32-wasm-example"
 version = "0.1.0"
 dependencies = [
  "esp32-wasm 0.1.0",

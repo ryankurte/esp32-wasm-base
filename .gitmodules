@@ -1,3 +1,0 @@
-[submodule "base/wasm-micro-runtime"]
-	path = base/wasm-micro-runtime
-	url = git@github.com:ryankurte/wasm-micro-runtime.git
