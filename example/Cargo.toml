@@ -6,11 +6,17 @@ repository = "https://github.com/ryankurte/rust-esp32-wasm"
 edition = "2018"
 license = "GPL-3.0"
 
-
 [dependencies]
 log = "0.4.8"
-esp32-wasm = { path = "../lib" }
+panic-abort = "0.3.2"
+libc = "0.2.66"
+
+[dependencies.esp32-wasm]
+path = "../lib"
+features = [ "logger" ]
 
 [profile.release]
 opt-level = "z"
 lto = true
+panic = 'abort'
+codegen-units = 1

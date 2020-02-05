@@ -1,6 +1,8 @@
+#![no_std]
 
-extern crate log;
+pub mod print;
 
+#[cfg(feature = "logger")]
 pub mod logger;
 
 pub mod prelude;
