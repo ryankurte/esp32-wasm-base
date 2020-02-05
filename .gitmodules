@@ -1,0 +1,3 @@
+[submodule "base/modules/wasm3/wasm3"]
+	path = base/modules/wasm3/wasm3
+	url = git@github.com:wasm3/wasm3.git

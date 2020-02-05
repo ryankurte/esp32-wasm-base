@@ -1,8 +1,8 @@
 
 idf_component_register(
-    SRCS "hello_world_main.c" 
+    SRCS "main.c" "wasm.c"
     INCLUDE_DIRS ""
-#    REQUIRES scd30
+    REQUIRES wasm3 console spi_flash nvs_flash mqtt
+    LDFRAGMENTS linker.lf
 ) 
-
 
