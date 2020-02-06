@@ -18,6 +18,7 @@
 #include "wifi_mgr.h"
 #include "mqtt_mgr.h"
 #include "fs_mgr.h"
+#include "app_mgr.h"
 #include "console.h"
 
 
@@ -56,6 +57,9 @@ void app_main(void)
 
     FS_MGR_init();
     FS_MGR_register_http(server);
+
+    APP_MGR_init();
+    APP_MGR_register_commands();
 
     // Run the console
     CONSOLE_run();

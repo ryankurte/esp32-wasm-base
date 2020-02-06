@@ -9,8 +9,12 @@
 #include "freertos/task.h"
 
 
+
+#define TASK_NAME_MAX_LEN 32
+
+
 typedef struct  {
-    char        *name;
+    char        name[TASK_NAME_MAX_LEN];
 
     uint8_t     *data;
 

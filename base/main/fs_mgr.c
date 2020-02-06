@@ -64,7 +64,7 @@ int FS_MGR_write(char* name, char* data, uint32_t data_len) {
     
     fclose(f);
     
-    ESP_LOGI(TAG, "File written");
+    ESP_LOGI(TAG, "File written (%d bytes)", data_len);
 
     return 0;
 }
@@ -86,7 +86,7 @@ int FS_MGR_read(char* name, char** buff, uint32_t *len) {
     rewind(f);
     ESP_LOGI(TAG, "File: %s, reading %d bytes", name, *len);
 
-    *buff = malloc(*len + 1);
+    *buff = malloc(*len);
     if (*buff == NULL) {
         ESP_LOGE(TAG, "Failed to allocate data for reading");
         fclose(f);
@@ -96,9 +96,6 @@ int FS_MGR_read(char* name, char** buff, uint32_t *len) {
     // Read file data
     fread(*buff, 1, *len, f);
 
-    (*buff)[*len] = '\0';
-    (*len) ++;
-
     // Close file
     fclose(f);
 
@@ -107,7 +104,7 @@ int FS_MGR_read(char* name, char** buff, uint32_t *len) {
 }
 
 // List files in filesystem
-int FS_MGR_list(char* dir_name, char* buff, uint32_t buff_len) {
+int FS_MGR_list(char* dir_name, char* buff, uint32_t buff_len, bool format) {
      ESP_LOGI(TAG, "Reading dir %s", dir_name);
 
     // List running tasks
@@ -116,11 +113,25 @@ int FS_MGR_list(char* dir_name, char* buff, uint32_t buff_len) {
     uint32_t c = 0;
 
     d = opendir(dir_name);
-    if (d) {
-        while ((dir = readdir(d)) != NULL) {
+    if (d == NULL) {
+        return -1;
+    }
+
+    if(format) {
+        c += snprintf(buff+c, buff_len-c, "[\r\n");
+    }
+
+    while ((dir = readdir(d)) != NULL) {
+        if (!format) {
             c += snprintf(buff+c, buff_len-c, "%s\r\n", dir->d_name);
+        } else {
+            c += snprintf(buff+c, buff_len-c, "\t%s,\r\n", dir->d_name);
         }
-        closedir(d);
+    }
+    closedir(d);
+
+    if(format) {
+        c += snprintf(buff+c, buff_len-c, "]");
     }
 
     return c;
@@ -183,7 +194,7 @@ esp_err_t file_get_handler(httpd_req_t *req)
         // List files
         char files[256];
 
-        int c = FS_MGR_list(name_buff, files, sizeof(files));
+        int c = FS_MGR_list(name_buff, files, sizeof(files), true);
         if (c < 0) {
             httpd_resp_send_err(req, 500, "Error reading dir");
             return ESP_OK;
@@ -213,6 +224,8 @@ esp_err_t file_post_handler(httpd_req_t *req)
         return ESP_OK;
     }
 
+    ESP_LOGI(TAG, "Receiving file %s with content length %d", file_name, req->content_len);
+
     // Allocate space for recieving object
     char* content = malloc(req->content_len);
     if (content == NULL) {
@@ -224,18 +237,22 @@ esp_err_t file_post_handler(httpd_req_t *req)
     int ret = httpd_req_recv(req, content, req->content_len);
     if (ret < 0) {
         ESP_LOGI(TAG, "HTTP receive error: %d", ret);
-        return ESP_FAIL;
+        httpd_resp_send_err(req, 500, "Receive error");
+
+        goto post_done;
     }
 
-    // TODO: write data
+    // Write data to FS
     FS_MGR_write(file_name, content, req->content_len);
-
-    // Free data storage
-    free(content);
 
     // Respond with OK
     const char resp[] = "OK\r\n";
     httpd_resp_send(req, resp, strlen(resp));
+
+post_done:
+
+    // Free data storage
+    free(content);
 
     return ESP_OK;
 }

@@ -27,7 +27,7 @@ impl Log for WasmLogger {
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
-            let _ = write!(WasmPrint, "{} - {}", record.level(), record.args());
+            let _ = write!(WasmPrint, "{} - {}\r\n", record.level(), record.args());
         }
     }
 

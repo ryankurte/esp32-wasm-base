@@ -18,7 +18,7 @@
 #include "extra/wasi_core.h"
 
 
-#define TAG "m3"
+#define TAG "WASM"
 
 #define STACK_SIZE  (32 * 1024)
 
@@ -27,7 +27,7 @@ int wasm_run(char* name, uint8_t* wasm, uint32_t wasm_len);
 
 int WASM_launch_task(const WasmTask_t* wasmTask) {
     // Launch task
-    xTaskCreate( vWasmTask, wasmTask->name, STACK_SIZE, &wasmTask, tskIDLE_PRIORITY, &wasmTask->handle );
+    xTaskCreate( vWasmTask, wasmTask->name, STACK_SIZE, wasmTask, tskIDLE_PRIORITY, &wasmTask->handle );
     if (wasmTask->handle == NULL) {
         ESP_LOGI(TAG, "Failed to launch WASM task: %s", wasmTask->name);
         return -1;
@@ -42,7 +42,9 @@ int WASM_end_task(const WasmTask_t* wasmTask) {
         return -1;
     }
 
-    vTaskDelete(wasmTask->handle);
+    if (wasmTask->running) {
+        vTaskDelete(wasmTask->handle);
+    }
 
     return 0;
 }
@@ -110,36 +112,51 @@ void vWasmTask( void * pvParameters ) {
     ESP_LOGI(TAG, "Finished WASM task: %s\r\n", wasmTask->name);
 
     wasmTask->running = false;
+
+    vTaskDelete(NULL);
 }
 
 
 int wasm_run(char* name, uint8_t* wasm, uint32_t wasm_len) {
+    int wasm_res = 0;
+
     M3Result result;
 
-    printf("Loading WebAssembly (mod: %s, %d bytes)...\n", name, wasm_len);
+    ESP_LOGI(TAG, "Loading WebAssembly (mod: %s, p: %p, %d bytes)...\n", name, (void*)wasm, wasm_len);
     IM3Environment env = m3_NewEnvironment ();
         if (env == NULL) {
         ESP_LOGI(TAG, "NewEnvironment failed");
-        return -1;
+        wasm_res = -1;
+
+        goto teardown_env;
     }
 
     IM3Runtime runtime = m3_NewRuntime (env, 32 * 1024, NULL);
     if (runtime == NULL) {
         ESP_LOGI(TAG, "NewRuntime failed");
-        return -2;
+        wasm_res = -2;
+
+        goto teardown_start;
     }
 
     IM3Module module;
     result = m3_ParseModule (env, &module, wasm, wasm_len);
     if (result) {
         ESP_LOGI(TAG, "ParseModule: %s", result);
-        return -3;
+        wasm_res = -3;
+
+        // Only unloaded modules should be manually freed
+        m3_FreeModule(module);
+
+        goto teardown_start;
     }
 
     result = m3_LoadModule (runtime, module);
     if (result) {
         ESP_LOGI(TAG, "LoadModule: %s", result);
-        return -4;
+        wasm_res = -4;
+
+        goto teardown_start;
     }
 #if 0
     result = m3_LinkEspWASI (runtime->modules);
@@ -151,26 +168,43 @@ int wasm_run(char* name, uint8_t* wasm, uint32_t wasm_len) {
     char* idk = "env";
     result = m3_LinkRawFunction (module, idk, "log_write", "i(*i)", &m3_log_write);
     if (result) {
+        ESP_LOGI(TAG, "LinkRawFunction 0: %s", result);
+        wasm_res = -5;
+
+        goto teardown_start;
+    }
+#if 0
+    result = m3_LinkRawFunction (module, idk, "delay_ms", "i(i)", &m3_delay_ms);
+    if (result) {
         ESP_LOGI(TAG, "LinkRawFunction: %s", result);
         return -5;
     }
+#endif
 
     IM3Function f;
     result = m3_FindFunction (&f, runtime, "_start");
     if (result) {
         ESP_LOGI(TAG, "FindFunction: %s", result);
-        return -6;
-    }
+        wasm_res = -6;
 
-    printf("Running...\n");
+        goto teardown_start;
+    }
 
     const char* i_argv[2] = { "test.wasm", NULL };
     result = m3_CallWithArgs (f, 1, i_argv);
     if (result) {
         ESP_LOGI(TAG, "CallWithArgs: %s", result);
-        return -7;
-    }
+        wasm_res = -7;
+
+        goto teardown_start;
+    } 
+
+teardown_start:
+    m3_FreeRuntime(runtime);
+
+teardown_env:
+    m3_FreeEnvironment(env);
     
-    return 0;
+    return wasm_res;
 }
 
