@@ -3,8 +3,10 @@
 
 #include <stdio.h>
 #include <time.h>
+#include <sys/time.h>
 #include <unistd.h>
 
+#include "freertos/FreeRTOS.h"
 
 #include "esp_system.h"
 #include "esp_log.h"
@@ -89,14 +91,17 @@ m3ApiRawFunction(m3_get_tick)
 {
     // Load arguments
     m3ApiReturnType  (uint32_t)
-    m3ApiGetArg      (uint32_t*, ticks_ms)
+    m3ApiGetArg      (uint32_t*, ticks_ms_offset)
 
     // Check args are valid
-    if (runtime == NULL || ticks_ms == NULL) { m3ApiReturn(__WASI_EINVAL); }
+    if (runtime == NULL || ticks_ms_offset == NULL) { m3ApiReturn(__WASI_EINVAL); }
 
     // Fetch tick counter
-    //*ticks_ms = getTimeSinceStart();
-    *ticks_ms = 10;
+    uint32_t* ticks = (uint32_t*) m3ApiOffsetToPtr(ticks_ms_offset);
+    
+    struct timeval tv_now;
+    gettimeofday(&tv_now, NULL);
+    *ticks = (int32_t)tv_now.tv_sec * 1000L + (int32_t)tv_now.tv_usec / 1000;
 
     m3ApiReturn(__WASI_ESUCCESS);
 }

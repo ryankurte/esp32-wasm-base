@@ -32,9 +32,9 @@ fn main()  {
     let mut esp32 = Esp32::take().unwrap();
 
     for i in 0..2 {
-        //let t = esp32.get_ticks();
+        let t = esp32.get_ticks();
 
-        info!("tick {}!", i);
+        info!("tick {} ({})!", t, i);
 
         esp32.delay_ms(1000);
 
