@@ -60,6 +60,7 @@ void app_main(void)
 
     APP_MGR_init();
     APP_MGR_register_commands();
+    APP_MGR_register_http(server);
 
     // Run the console
     CONSOLE_run();

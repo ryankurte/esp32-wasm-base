@@ -144,8 +144,6 @@ int APP_MGR_unload() {
     return 0;
 }
 
-
-
 // App Status command for CLI
 static int task_status_cmd(int argc, char **argv) {
     APP_MGR_status();
@@ -272,4 +270,115 @@ void APP_MGR_register_commands() {
     ESP_ERROR_CHECK( esp_console_cmd_register(&task_start) );
     ESP_ERROR_CHECK( esp_console_cmd_register(&task_stop) );
     ESP_ERROR_CHECK( esp_console_cmd_register(&task_unload) );
+}
+
+esp_err_t app_status_handler(httpd_req_t *req) {
+    char* c;
+
+    ESP_LOGI(TAG, "Get status");
+
+    if (task == NULL) {
+        httpd_resp_send_err(req, 200, "UNLOADED");
+    } else if (task->running) {
+        httpd_resp_send_err(req, 200, "RUNNING");
+    } else {
+        httpd_resp_send_err(req, 200, "STOPPED");
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t app_cmd_handler(httpd_req_t *req) {
+    int res;
+
+    // Fetch query length
+    size_t buf_len = httpd_req_get_url_query_len(req) + 1;
+
+    // Check we have some query data
+    if (buf_len <= 1) {
+        httpd_resp_send_err(req, 400, "Command must be specified");
+        return ESP_OK;
+    }
+
+    // Allocate query storage
+    char* buf = malloc(buf_len);
+
+    if (httpd_req_get_url_query_str(req, buf, buf_len) != ESP_OK) {
+        ESP_LOGI(TAG, "Error getting query string");
+        free(buf);
+        return ESP_OK;
+    }
+
+    char cmd[64] = {0};
+    res = httpd_query_key_value(buf, "cmd", cmd, sizeof(cmd));
+    if (res == ESP_OK) {
+        ESP_LOGI(TAG, "Found command: %s", cmd);
+    }
+
+    char name[64] = {0};
+    res = httpd_query_key_value(buf, "name", name, sizeof(name));
+    if (res == ESP_OK) {
+        ESP_LOGI(TAG, "Found name: %s", name);
+    }
+
+    char file[64] = {0};
+    res = httpd_query_key_value(buf, "file", file, sizeof(file));
+    if (res == ESP_OK) {
+        ESP_LOGI(TAG, "Found file: %s", file);
+    }
+
+    if (strcmp(cmd, "load") == 0) {
+        if (file[0] == 0 || name[0] == 0 ) {
+            httpd_resp_send_err(req, 500, "file and name query params required");
+            res = -100;
+        } else {
+            res = APP_MGR_load(name, file);
+        }
+
+    } else if (strcmp(cmd, "unload") == 0 ){
+        res = APP_MGR_unload();
+
+    } else if (strcmp(cmd, "start") == 0 ){
+        res = APP_MGR_start();
+
+    } else if (strcmp(cmd, "stop") == 0 ){
+        res = APP_MGR_stop();
+
+    } else {
+        httpd_resp_send_err(req, 400, "Unrecognized command");
+    }
+
+    if (res == 0) {
+        char c[] = "OK";
+        httpd_resp_send(req, c, strlen(c));
+    } else {
+        char m[32];
+        snprintf(m, sizeof(m), "ERROR: %d", res);
+        httpd_resp_send_err(req, 400, m);
+    }
+
+    // Deallocate query storage
+    free(buf);
+
+
+    return ESP_OK;
+}
+
+httpd_uri_t app_uri_get_status = {
+    .uri      = "/app/status",
+    .method   = HTTP_GET,
+    .handler  = app_status_handler,
+    .user_ctx = NULL
+};
+
+httpd_uri_t app_uri_get_cmd = {
+    .uri      = "/app/cmd",
+    .method   = HTTP_GET,
+    .handler  = app_cmd_handler,
+    .user_ctx = NULL
+};
+
+void APP_MGR_register_http(httpd_handle_t server) {
+    httpd_register_uri_handler(server, &app_uri_get_status);
+    httpd_register_uri_handler(server, &app_uri_get_cmd);
 }
