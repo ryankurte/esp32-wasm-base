@@ -7,6 +7,7 @@
 #include "esp_log.h"
 #include "esp_http_server.h"
 #include "esp_spiffs.h"
+#include "rom/crc.h"
 
 static const char* TAG = "FS_MGR";
 
@@ -54,6 +55,8 @@ int FS_MGR_write(char* name, char* data, uint32_t data_len) {
 
     ESP_LOGI(TAG, "Opening file %s", name);
 
+    uint32_t crc = crc32_le(0, (uint8_t*) data, data_len);
+
     FILE* f = fopen(name, "w");
     if (f == NULL) {
         ESP_LOGE(TAG, "Failed to open file for writing");
@@ -64,7 +67,7 @@ int FS_MGR_write(char* name, char* data, uint32_t data_len) {
     
     fclose(f);
     
-    ESP_LOGI(TAG, "File written (%d bytes)", data_len);
+    ESP_LOGI(TAG, "File written (%d bytes, crc: %08x)", data_len, crc);
 
     return 0;
 }
@@ -72,6 +75,8 @@ int FS_MGR_write(char* name, char* data, uint32_t data_len) {
 // Read from a file, buff will be malloc'd internally and must be
 // freed by the caller
 int FS_MGR_read(char* name, char** buff, uint32_t *len) {
+    uint32_t res;
+
     ESP_LOGI(TAG, "Reading file %s", name);
 
     FILE* f = fopen(name, "r");
@@ -94,7 +99,13 @@ int FS_MGR_read(char* name, char** buff, uint32_t *len) {
     }
 
     // Read file data
-    fread(*buff, 1, *len, f);
+    res = fread(*buff, 1, *len, f);
+    if (res != *len) {
+        ESP_LOGE(TAG, "Read res: %d len: %d", res, *len);
+    }
+
+    uint32_t crc = crc32_le(0, (uint8_t*) *buff, *len);
+    ESP_LOGI(TAG, "Read file (CRC: 0x%08x)", crc);
 
     // Close file
     fclose(f);
@@ -232,15 +243,24 @@ esp_err_t file_post_handler(httpd_req_t *req)
         httpd_resp_send_err(req, 500, "Error allocating receive buffer");
         return ESP_OK;
     }
+    memset(content, 0xFF, req->content_len);
     
     // Receive data
-    int ret = httpd_req_recv(req, content, req->content_len);
-    if (ret < 0) {
-        ESP_LOGI(TAG, "HTTP receive error: %d", ret);
-        httpd_resp_send_err(req, 500, "Receive error");
+    uint32_t c = 0;
+    while (c < req->content_len) {
+        int ret = httpd_req_recv(req, content + c, req->content_len - c);
 
-        goto post_done;
+        if (ret < 0) {
+            ESP_LOGI(TAG, "HTTP receive error: %d", ret);
+            httpd_resp_send_err(req, 500, "Receive error");
+
+            goto post_done;
+        }
+
+        c += ret;
     }
+
+    
 
     // Write data to FS
     FS_MGR_write(file_name, content, req->content_len);

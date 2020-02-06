@@ -18,6 +18,12 @@ extern crate esp32_wasm_hal;
 use esp32_wasm_hal::prelude::*;
 
 
+extern crate sensor_scd30;
+use sensor_scd30::{Scd30};
+
+const SCD_SDA: u32 = 26;
+const SCD_SCL: u32 = 23;
+
 #[no_mangle] 
 pub extern fn _start() {
     main();
@@ -32,12 +38,26 @@ fn main()  {
     // Take ESP32 object
     let mut esp32 = Esp32::take().unwrap();
 
-    let mut i2c0 = esp32.i2c_init(0, 100_000, 18, 19).unwrap();
+    let mut i2c0 = esp32.i2c_init(0, 100_000, SCD_SDA, SCD_SCL).unwrap();
+
+    let mut scd = match Scd30::new(i2c0) {
+        Ok(v) => v,
+        Err(e) => {
+            error!("Error connecting to SCD30");
+            return;
+        }
+    };
+
+    scd.start_continuous(10).unwrap();
 
     for i in 0..2 {
         let t = esp32.get_ticks_ms();
-
         info!("tick {} ({})!", t, i);
+
+        if scd.data_ready().unwrap() {
+            let m = scd.read_data().unwrap();
+            info!("Temp: {} Humid: {} CO2: {}", m.temp, m.rh, m.co2);
+        }
 
         esp32.delay_ms(1000);
     }

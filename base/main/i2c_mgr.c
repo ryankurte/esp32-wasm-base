@@ -34,6 +34,8 @@ static esp_err_t i2c_get_port(uint32_t port, i2c_port_t *i2c_port) {
     return ESP_OK;
 }
 
+// TODO: track which I2C is used / unused, return errors on attempted duplication (but allow reconfiguration?)
+
 int i2c_init(uint32_t port, uint32_t freq, uint32_t sda, uint32_t scl) {
     
     i2c_config_t conf;

@@ -112,7 +112,7 @@ m3ApiRawFunction(m3_get_tick)
 m3ApiRawFunction(m3_i2c_init)
 {
     // Load arguments
-    m3ApiReturnType  (uint32_t)
+    m3ApiReturnType  (int32_t)
     m3ApiGetArg      (uint32_t, i2c_port)
     m3ApiGetArg      (uint32_t, freq)
     m3ApiGetArg      (uint32_t, sda)
@@ -123,14 +123,16 @@ m3ApiRawFunction(m3_i2c_init)
 
     ESP_LOGI(TAG, "I2C init port: %d freq: %d sda: %d scl: %d\r\n", i2c_port, freq, sda, scl);
 
-    m3ApiReturn(__WASI_ESUCCESS);
+    int32_t res = i2c_init(i2c_port, freq, sda, scl);
+
+    m3ApiReturn(res);
 }
 
 
 m3ApiRawFunction(m3_i2c_deinit)
 {
     // Load arguments
-    m3ApiReturnType  (uint32_t)
+    m3ApiReturnType  (int32_t)
     m3ApiGetArg      (uint32_t, i2c_port)
 
     // Check args are valid
@@ -138,13 +140,15 @@ m3ApiRawFunction(m3_i2c_deinit)
 
     ESP_LOGI(TAG, "I2C deinit port: %d\r\n", i2c_port);
 
-    m3ApiReturn(__WASI_ESUCCESS);
+    int32_t res = i2c_deinit(i2c_port);
+
+    m3ApiReturn(res);
 }
 
 m3ApiRawFunction(m3_i2c_write)
 {
     // Load arguments
-    m3ApiReturnType  (uint32_t)
+    m3ApiReturnType  (int32_t)
     m3ApiGetArg      (uint32_t, i2c_port)
     m3ApiGetArg      (uint32_t, address)
     m3ApiGetArgMem   (uint8_t*, data_out)
@@ -156,15 +160,15 @@ m3ApiRawFunction(m3_i2c_write)
 
     ESP_LOGI(TAG, "I2C write port: %d addr: %x, %p %d bytes\r\n", i2c_port, address, data_out, data_out_len);
 
-    i2c_write(i2c_port, address, data_out, data_out_len);
+    int32_t res = i2c_write(i2c_port, address, data_out, data_out_len);
 
-    m3ApiReturn(__WASI_ESUCCESS);
+    m3ApiReturn(res);
 }
 
 m3ApiRawFunction(m3_i2c_read)
 {
     // Load arguments
-    m3ApiReturnType  (uint32_t)
+    m3ApiReturnType  (int32_t)
     m3ApiGetArg      (uint32_t, i2c_port)
     m3ApiGetArg      (uint32_t, address)
     m3ApiGetArgMem   (uint8_t*, data_in)
@@ -176,15 +180,15 @@ m3ApiRawFunction(m3_i2c_read)
 
     ESP_LOGI(TAG, "I2C read port: %d addr: %x, %p %d bytes\r\n", i2c_port, address, data_in, data_in_len);
 
-    i2c_write(i2c_read, address, data_in, data_in_len);
+    int32_t res = i2c_write(i2c_port, address, data_in, data_in_len);
 
-    m3ApiReturn(__WASI_ESUCCESS);
+    m3ApiReturn(res);
 }
 
 m3ApiRawFunction(m3_i2c_write_read)
 {
     // Load arguments
-    m3ApiReturnType  (uint32_t)
+    m3ApiReturnType  (int32_t)
     m3ApiGetArg      (uint32_t, i2c_port)
     m3ApiGetArg      (uint32_t, address)
     m3ApiGetArgMem   (uint8_t*, data_out)
@@ -198,9 +202,9 @@ m3ApiRawFunction(m3_i2c_write_read)
 
     ESP_LOGI(TAG, "I2C write_read port: %d addr: %x, out: %p %d bytes, in: %p %d bytes\r\n", i2c_port, address, data_out, data_out_len, data_in, data_in_len);
 
-    i2c_write_read(i2c_port, address, data_out, data_out_len, data_in, data_in_len);
+    int32_t res = i2c_write_read(i2c_port, address, data_out, data_out_len, data_in, data_in_len);
 
-    m3ApiReturn(__WASI_ESUCCESS);
+    m3ApiReturn(res);
 }
 
 
