@@ -1,5 +1,5 @@
 [package]
-name = "esp32-wasm"
+name = "esp32-wasm-hal"
 version = "0.1.0"
 repository = "https://github.com/ryankurte/rust-esp32-wasm"
 authors = ["ryan kurte <ryan@kurte.nz>"]
@@ -12,3 +12,4 @@ logger = ["log"]
 
 [dependencies]
 log = { version = "0.4.8", optional = true }
+embedded-hal = "0.2.3"

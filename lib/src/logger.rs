@@ -1,4 +1,6 @@
-
+//! esp32-wasm logger implementation
+//! 
+// Copyright 2020 Ryan Kurte
 
 use core::fmt::Write;
 

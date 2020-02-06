@@ -137,6 +137,8 @@ int APP_MGR_unload() {
     free(task->data);
     free(task);
 
+    task = NULL;
+
     ESP_LOGI(TAG, "Task unloaded");
 
     return 0;

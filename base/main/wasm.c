@@ -95,7 +95,8 @@ m3ApiRawFunction(m3_get_tick)
     if (runtime == NULL || ticks_ms == NULL) { m3ApiReturn(__WASI_EINVAL); }
 
     // Fetch tick counter
-   // *ticks_ms = getTimeSinceStart();
+    //*ticks_ms = getTimeSinceStart();
+    *ticks_ms = 10;
 
     m3ApiReturn(__WASI_ESUCCESS);
 }
@@ -169,16 +170,11 @@ int wasm_run(char* name, uint8_t* wasm, uint32_t wasm_len) {
     result = m3_LinkRawFunction (module, idk, "log_write", "i(*i)", &m3_log_write);
     if (result) {
         ESP_LOGI(TAG, "LinkRawFunction 0: %s", result);
-        wasm_res = -5;
+    }
+#if 1
+    m3_LinkRawFunction (module, idk, "delay_ms", "i(i)", &m3_delay_ms);
+    m3_LinkRawFunction (module, idk, "get_ticks", "i(*)", &m3_get_tick);
 
-        goto teardown_start;
-    }
-#if 0
-    result = m3_LinkRawFunction (module, idk, "delay_ms", "i(i)", &m3_delay_ms);
-    if (result) {
-        ESP_LOGI(TAG, "LinkRawFunction: %s", result);
-        return -5;
-    }
 #endif
 
     IM3Function f;
