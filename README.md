@@ -86,7 +86,7 @@ The wasm API is defined in [wasm.c](https://github.com/ryankurte/rust-esp32-wasm
 ## Notes
 
 - When writing C binding functions, buffers must be resolved from offsets to addresses using `m3ApiOffsetToPtr`
-- You need to minimize the rustc stack size `"-C", "link-arg=-zstack-size=32768"` otherwise rustc defaults to using 1MB of stack and this won't run on devices without SPIRAM
+- You need to minimize the rustc stack size `"-C", "link-arg=-zstack-size=32768"` otherwise rustc defaults to using 1MB of stack and this won't run on devices without SPIRAM. The tradeoff here is that you may run out of stack space, so, ymmv.
 
 
 ## I have a problem and/or can I help?
