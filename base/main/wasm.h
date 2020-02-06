@@ -3,6 +3,7 @@
 #define WASM_APP_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -10,12 +11,14 @@
 
 typedef struct  {
     char        *name;
-    
+
     uint8_t     *data;
 
     uint32_t    data_len;
 
     TaskHandle_t handle;
+
+    bool        running;
 
 } WasmTask_t;
 

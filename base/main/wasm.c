@@ -103,9 +103,13 @@ void vWasmTask( void * pvParameters ) {
 
     ESP_LOGI(TAG, "Running WASM task: %s\r\n", wasmTask->name);
 
+    wasmTask->running = true;
+
     wasm_run(wasmTask->name, wasmTask->data, wasmTask->data_len);
 
     ESP_LOGI(TAG, "Finished WASM task: %s\r\n", wasmTask->name);
+
+    wasmTask->running = false;
 }
 
 
