@@ -61,7 +61,15 @@ The rust API is exposed using the [esp32-wasm](https://github.com/ryankurte/rust
 - Build with `cargo build --release`
 - Optimize with: `wasm-opt -Oz -o test.wasm --strip-debug --strip-dwarf /media/tmp/wasm32-unknown-unknown/release/esp32-wasm-example.wasm`
 - _Optional_ Check sizes with `twiggy top -n 21 test.wasm` and `twiggy dominators test.wasm`
-- Load with `curl "http://ESP_IP/fs?file=/spiffs/test.wasm" -X POST --data-binary @test.wasm`
+
+Interaction is supported via the serial terminal or via simple HTTP api:
+
+- Load the binary to the device with `curl "http://ESP_IP/fs?file=/spiffs/test.wasm" -X POST --data-binary @test.wasm`
+- Load the task to memory with `curl "http://ESP_IP/app/cmd?cmd=load&name=test&file=/spiffs/test.wasm"`
+- Execute the task with `curl "http://ESP_IP/app/cmd?cmd=start"`
+- _Optional_ stop the task with `curl "http://ESP_IP/app/cmd?cmd=stop"`
+- Unload the task from memory with `curl "http://ESP_IP/app/cmd?cmd=unload"`
+
 
 
 ### The base / C Project
