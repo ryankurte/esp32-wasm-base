@@ -15,7 +15,7 @@ impl Write for WasmPrint {
         let s = src.as_bytes();
 
         let p: *const u8 = s.as_ptr();
-        let l = s.len() as i32;
+        let l = s.len() as u32;
 
         unsafe { runtime::log_write( p, l ) };
 

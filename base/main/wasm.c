@@ -19,9 +19,12 @@
 #include "m3_exception.h"
 #include "extra/wasi_core.h"
 
+#include "i2c_mgr.h"
+
 
 #define TAG "WASM"
 
+// Seems we need quite a lot of stack for this task...
 #define STACK_SIZE  (32 * 1024)
 
 void vWasmTask( void * pvParameters );
@@ -106,6 +109,101 @@ m3ApiRawFunction(m3_get_tick)
     m3ApiReturn(__WASI_ESUCCESS);
 }
 
+m3ApiRawFunction(m3_i2c_init)
+{
+    // Load arguments
+    m3ApiReturnType  (uint32_t)
+    m3ApiGetArg      (uint32_t, i2c_port)
+    m3ApiGetArg      (uint32_t, freq)
+    m3ApiGetArg      (uint32_t, sda)
+    m3ApiGetArg      (uint32_t, scl)
+
+    // Check args are valid
+    if (runtime == NULL) { m3ApiReturn(__WASI_EINVAL); }
+
+    ESP_LOGI(TAG, "I2C init port: %d freq: %d sda: %d scl: %d\r\n", i2c_port, freq, sda, scl);
+
+    m3ApiReturn(__WASI_ESUCCESS);
+}
+
+
+m3ApiRawFunction(m3_i2c_deinit)
+{
+    // Load arguments
+    m3ApiReturnType  (uint32_t)
+    m3ApiGetArg      (uint32_t, i2c_port)
+
+    // Check args are valid
+    if (runtime == NULL) { m3ApiReturn(__WASI_EINVAL); }
+
+    ESP_LOGI(TAG, "I2C deinit port: %d\r\n", i2c_port);
+
+    m3ApiReturn(__WASI_ESUCCESS);
+}
+
+m3ApiRawFunction(m3_i2c_write)
+{
+    // Load arguments
+    m3ApiReturnType  (uint32_t)
+    m3ApiGetArg      (uint32_t, i2c_port)
+    m3ApiGetArg      (uint32_t, address)
+    m3ApiGetArgMem   (uint8_t*, data_out)
+    m3ApiGetArg      (uint32_t, data_out_len)
+
+
+    // Check args are valid
+    if (runtime == NULL) { m3ApiReturn(__WASI_EINVAL); }
+
+    ESP_LOGI(TAG, "I2C write port: %d addr: %x, %p %d bytes\r\n", i2c_port, address, data_out, data_out_len);
+
+    i2c_write(i2c_port, address, data_out, data_out_len);
+
+    m3ApiReturn(__WASI_ESUCCESS);
+}
+
+m3ApiRawFunction(m3_i2c_read)
+{
+    // Load arguments
+    m3ApiReturnType  (uint32_t)
+    m3ApiGetArg      (uint32_t, i2c_port)
+    m3ApiGetArg      (uint32_t, address)
+    m3ApiGetArgMem   (uint8_t*, data_in)
+    m3ApiGetArg      (uint32_t, data_in_len)
+
+
+    // Check args are valid
+    if (runtime == NULL) { m3ApiReturn(__WASI_EINVAL); }
+
+    ESP_LOGI(TAG, "I2C read port: %d addr: %x, %p %d bytes\r\n", i2c_port, address, data_in, data_in_len);
+
+    i2c_write(i2c_read, address, data_in, data_in_len);
+
+    m3ApiReturn(__WASI_ESUCCESS);
+}
+
+m3ApiRawFunction(m3_i2c_write_read)
+{
+    // Load arguments
+    m3ApiReturnType  (uint32_t)
+    m3ApiGetArg      (uint32_t, i2c_port)
+    m3ApiGetArg      (uint32_t, address)
+    m3ApiGetArgMem   (uint8_t*, data_out)
+    m3ApiGetArg      (uint32_t, data_out_len)
+    m3ApiGetArgMem   (uint8_t*, data_in)
+    m3ApiGetArg      (uint32_t, data_in_len)
+
+
+    // Check args are valid
+    if (runtime == NULL) { m3ApiReturn(__WASI_EINVAL); }
+
+    ESP_LOGI(TAG, "I2C write_read port: %d addr: %x, out: %p %d bytes, in: %p %d bytes\r\n", i2c_port, address, data_out, data_out_len, data_in, data_in_len);
+
+    i2c_write_read(i2c_port, address, data_out, data_out_len, data_in, data_in_len);
+
+    m3ApiReturn(__WASI_ESUCCESS);
+}
+
+
 void vWasmTask( void * pvParameters ) {
     WasmTask_t* wasmTask = (WasmTask_t*) pvParameters;
 
@@ -180,6 +278,11 @@ int wasm_run(char* name, uint8_t* wasm, uint32_t wasm_len) {
     m3_LinkRawFunction (module, idk, "delay_ms", "i(i)", &m3_delay_ms);
     m3_LinkRawFunction (module, idk, "get_ticks", "i(*)", &m3_get_tick);
 
+    m3_LinkRawFunction (module, idk, "i2c_init", "i(iiii)", &m3_i2c_init);
+    m3_LinkRawFunction (module, idk, "i2c_deinit", "i(i)", &m3_i2c_deinit);
+    m3_LinkRawFunction (module, idk, "i2c_write", "i(ii*i)", &m3_i2c_write);
+    m3_LinkRawFunction (module, idk, "i2c_read", "i(ii*i)", &m3_i2c_read);
+    m3_LinkRawFunction (module, idk, "i2c_write_read", "i(ii*i*i)", &m3_i2c_write_read);
 #endif
 
     IM3Function f;

@@ -6,7 +6,8 @@ use embedded_hal::blocking::delay::DelayMs;
 pub mod print;
 
 pub mod delay;
-use delay::WasmDelay;
+
+pub mod i2c;
 
 #[cfg(feature = "logger")]
 pub mod logger;
@@ -15,13 +16,23 @@ pub mod prelude;
 
 mod runtime;
 
+use delay::WasmDelay;
+use i2c::WasmI2c;
+
 /// Internal hardware singleton
 static mut ESP32: Option<Esp32> = Some(Esp32{
+
+    i2c: [Some(WasmI2c(0)), Some(WasmI2c(1))],
+
     _extensible: (),
 });
 
 /// ESP32 WASM API object
 pub struct Esp32 {
+
+    // I2C devices
+    i2c: [Option<WasmI2c>; 2],
+
     // Block construction of this object outside of the library
     _extensible: (),
 }
@@ -39,11 +50,26 @@ impl Esp32 {
         unsafe { ESP32.take() }
     }
 
-    /// Get the current tick count from the underlying OS
-    pub fn get_ticks(&self) -> u32 {
+    /// Get the current millisecond tick count from the underlying os
+    pub fn get_ticks_ms(&self) -> u32 {
         let mut v = 0;
         unsafe { get_ticks(&mut v) };
         v as u32
+    }
+
+    pub fn i2c_init(&mut self, index: usize, frequency: u32, sda_pin: u32, scl_pin: u32) -> Option<WasmI2c> {
+        if index > 1 {
+            return None;
+        }
+
+        let i = match self.i2c[index].take() {
+            Some(v) => v,
+            None => return None,
+        };
+
+        i.init(frequency, sda_pin, scl_pin);
+
+        Some(i)
     }
 }
 
