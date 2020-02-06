@@ -23,13 +23,13 @@ The goal is to provide a common base image that provides all common functionalit
 
 ## Status / Features
 
-Absolutely a work in progress, 
+Absolutely cursed and a mostly untested work in progress, 
 
 - [ ] WASM Drivers
   - [x] delay
   - [x] print
   - [ ] spi
-  - [ ] i2c
+  - [x] i2c (untested)
   - [ ] uart
 - [ ] Remote APIs
   - [x] Read/write files
@@ -44,6 +44,7 @@ Absolutely a work in progress,
   - [ ] Start/stop wasm
   - [ ] Fetch/stream application logs
 - [ ] Misc
+  - [ ] Device individualisation (serial, p/n, etc.)
   - [ ] Base image OTA
   - [ ] mDNS device discovery
 
