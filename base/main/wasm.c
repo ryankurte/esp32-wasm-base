@@ -274,10 +274,7 @@ int wasm_run(char* name, uint8_t* wasm, uint32_t wasm_len) {
     }
 #endif
     char* idk = "env";
-    result = m3_LinkRawFunction (module, idk, "log_write", "i(*i)", &m3_log_write);
-    if (result) {
-        ESP_LOGI(TAG, "LinkRawFunction 0: %s", result);
-    }
+    m3_LinkRawFunction (module, idk, "log_write", "i(*i)", &m3_log_write);
 #if 1
     m3_LinkRawFunction (module, idk, "delay_ms", "i(i)", &m3_delay_ms);
     m3_LinkRawFunction (module, idk, "get_ticks", "i(*)", &m3_get_tick);
@@ -290,7 +287,7 @@ int wasm_run(char* name, uint8_t* wasm, uint32_t wasm_len) {
 #endif
 
     IM3Function f;
-    result = m3_FindFunction (&f, runtime, "_start");
+    result = m3_FindFunction (&f, runtime, "main");
     if (result) {
         ESP_LOGI(TAG, "FindFunction: %s", result);
         wasm_res = -6;
@@ -298,8 +295,8 @@ int wasm_run(char* name, uint8_t* wasm, uint32_t wasm_len) {
         goto teardown_start;
     }
 
-    const char* i_argv[2] = { "test.wasm", NULL };
-    result = m3_CallWithArgs (f, 1, i_argv);
+    const char* i_argv[2] = { "1", "test.wasm", NULL };
+    result = m3_CallWithArgs (f, 2, i_argv);
     if (result) {
         ESP_LOGI(TAG, "CallWithArgs: %s", result);
         wasm_res = -7;

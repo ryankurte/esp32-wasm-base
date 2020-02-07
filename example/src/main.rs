@@ -24,27 +24,32 @@ use sensor_scd30::{Scd30};
 const SCD_SDA: u32 = 26;
 const SCD_SCL: u32 = 23;
 
-#[no_mangle] 
-pub extern fn _start() {
-    main();
-}
 
-fn main()  {
+
+#[no_mangle] 
+pub extern fn main(argc: i32, _argv: *const *const u8) -> i32 {
     // Init logger
     WasmLogger::init();
 
     info!("Hello ESP32 from rust-wasm-unknown!");
+    info!("argc: {}", argc);
 
     // Take ESP32 object
     let mut esp32 = Esp32::take().unwrap();
 
-    let mut i2c0 = esp32.i2c_init(0, 100_000, SCD_SDA, SCD_SCL).unwrap();
+    let mut i2c0 = match esp32.i2c_init(0, 100_000, SCD_SDA, SCD_SCL) {
+        Some(v) => v,
+        None => {
+            error!("Error initialising I2C");
+            return -1;
+        }
+    };
 
     let mut scd = match Scd30::new(i2c0) {
         Ok(v) => v,
         Err(e) => {
             error!("Error connecting to SCD30");
-            return;
+            return -2;
         }
     };
 
@@ -61,6 +66,8 @@ fn main()  {
 
         esp32.delay_ms(1000);
     }
+
+    return 0;
 
     //
     //let _ = i2c0.read(0x13, &mut r);
