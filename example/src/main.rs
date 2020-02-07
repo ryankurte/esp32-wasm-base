@@ -29,7 +29,7 @@ pub extern fn main(argc: u32, argv: u32) -> i32 {
     // Take ESP32 object
     let mut esp32 = Esp32::take().unwrap();
 
-    info!("Hello ESP32 from rust-wasm-unknown!");
+    info!("Hello ESP32 from rust-esp32-wasm!");
 
     // Fetch args
     let mut args = esp32.args(argc, argv);

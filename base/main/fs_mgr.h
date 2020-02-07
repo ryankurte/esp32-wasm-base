@@ -17,6 +17,9 @@ int FS_MGR_read(char* name, char** buff, uint32_t *len);
 // List files in the file system
 int FS_MGR_list(char* dir_name, char* buff, uint32_t buff_len, bool format);
 
+// Delete a file from the filesystem
+int FS_MGR_delete(char* file_name);
+
 // Register FS CLI commands
 void FS_MGR_register_commands();
 

@@ -149,6 +149,10 @@ int FS_MGR_list(char* dir_name, char* buff, uint32_t buff_len, bool format) {
 }
 
 
+int FS_MGR_delete(char* file_name) {
+    return remove(file_name);
+}
+
 // Helper to load query params from a request
 bool get_query_param(httpd_req_t *req, char* name, char* value, uint32_t value_len) {
     size_t buf_len;
