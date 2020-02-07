@@ -8,8 +8,11 @@
 int APP_MGR_init();
 
 int APP_MGR_load(char* name, char* file);
-int APP_MGR_start();
+
+int APP_MGR_start(uint32_t argc, char** argv);
+
 int APP_MGR_stop();
+
 int APP_MGR_unload();
 
 // Bind application manager console commands

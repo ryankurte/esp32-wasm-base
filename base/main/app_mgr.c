@@ -74,7 +74,7 @@ int APP_MGR_load(char* name, char* file) {
     return 0;
 }
 
-int APP_MGR_start() {
+int APP_MGR_start(uint32_t argc, char** argv) {
     if (task == NULL) {
         ESP_LOGI(TAG, "No task loaded");
         return -1;
@@ -83,6 +83,18 @@ int APP_MGR_start() {
     if (task->running) {
         ESP_LOGI(TAG, "Task %s already running", task->name);
         return -2;
+    }
+
+    // Set first argument to task name
+    strncpy(task->args[0], task->name, TASK_MAX_ARGLEN);
+    task->arg_count = 1;
+
+    // Copy following elements
+    for (uint32_t i=0; i<argc; i++) {
+        printf("Loading arg %d value: '%s'\r\n", argc, argv[i]);
+
+        strncpy(task->args[i+1], argv[i], TASK_MAX_ARGLEN);
+        task->arg_count += 1;
     }
 
     // Launch task
@@ -190,7 +202,7 @@ static int task_launch_command(int argc, char **argv) {
         return res;
     }
 
-    res = APP_MGR_start();
+    res = APP_MGR_start(0, NULL);
     if (res < 0) {
         ESP_LOGI(TAG, "Error %d loading task", res);
         return res;
@@ -200,7 +212,7 @@ static int task_launch_command(int argc, char **argv) {
 }
 
 static int task_start_command(int argc, char **argv) {
-    return APP_MGR_start();
+    return APP_MGR_start(argc-1, &argv[1]);
 }
 
 static int task_stop_command(int argc, char **argv) {
@@ -273,7 +285,6 @@ void APP_MGR_register_commands() {
 }
 
 esp_err_t app_status_handler(httpd_req_t *req) {
-    char* c;
 
     ESP_LOGI(TAG, "Get status");
 
@@ -339,7 +350,7 @@ esp_err_t app_cmd_handler(httpd_req_t *req) {
         res = APP_MGR_unload();
 
     } else if (strcmp(cmd, "start") == 0 ){
-        res = APP_MGR_start();
+        res = APP_MGR_start(0, NULL);
 
     } else if (strcmp(cmd, "stop") == 0 ){
         res = APP_MGR_stop();

@@ -17,6 +17,7 @@
 #include "m3_api_wasi.h"
 #include "m3_env.h"
 #include "m3_exception.h"
+#include "m3_info.h"
 #include "extra/wasi_core.h"
 
 #include "m3_api_esp_wasi.h"
@@ -30,7 +31,7 @@
 #define STACK_SIZE  (32 * 1024)
 
 void vWasmTask( void * pvParameters );
-int wasm_run(char* name, uint8_t* wasm, uint32_t wasm_len);
+int wasm_run(WasmTask_t* wasmTask);
 
 int WASM_launch_task(const WasmTask_t* wasmTask) {
     // Launch task
@@ -56,6 +57,31 @@ int WASM_end_task(const WasmTask_t* wasmTask) {
     return 0;
 }
 
+// WASM fetch arguments function
+m3ApiRawFunction(m3_arg_get)
+{
+    // Load arguments
+    m3ApiReturnType  (uint32_t)
+
+    m3ApiGetArg      (uint32_t, ptr)
+    m3ApiGetArg      (uint32_t, index)
+
+    m3ApiGetArgMem   (uint8_t*, buff)
+    m3ApiGetArgMem   (uint8_t*, buff_len)
+
+    // Check args are valid
+    if (runtime == NULL || buff == NULL || buff_len == NULL) { m3ApiReturn(__WASI_EINVAL); }
+
+    WasmTask_t* task = (char**) ptr;
+
+    ESP_LOGI(TAG, "m3_arg_get addr: 0x%08x task: %p i: %x v: %s max: %d\r\n", ptr, task, index, task->args[index], buff_len[0]);
+
+    int32_t res = strncpy((char*) buff, task->args[index], buff_len[0]);
+    buff_len[0] = res;
+
+    m3ApiReturn(__WASI_ESUCCESS);
+}
+
 // WASM logging function
 m3ApiRawFunction(m3_log_write)
 {
@@ -65,7 +91,7 @@ m3ApiRawFunction(m3_log_write)
     m3ApiGetArg      (uint32_t, buff_len)
 
     // Check args are valid
-    if (runtime == NULL || buff_offset == NULL) { m3ApiReturn(__WASI_EINVAL); }
+    if (runtime == NULL ) { m3ApiReturn(__WASI_EINVAL); }
 
     char* buff = m3ApiOffsetToPtr(buff_offset);
 
@@ -217,9 +243,9 @@ void vWasmTask( void * pvParameters ) {
 
     wasmTask->running = true;
 
-    wasm_run(wasmTask->name, wasmTask->data, wasmTask->data_len);
+    int32_t res = wasm_run(wasmTask);
 
-    ESP_LOGI(TAG, "Finished WASM task: %s\r\n", wasmTask->name);
+    ESP_LOGI(TAG, "Finished WASM task: %s (result: %d)\r\n", wasmTask->name, res);
 
     wasmTask->running = false;
 
@@ -227,12 +253,12 @@ void vWasmTask( void * pvParameters ) {
 }
 
 
-int wasm_run(char* name, uint8_t* wasm, uint32_t wasm_len) {
+int wasm_run(WasmTask_t* task) {
     int wasm_res = 0;
 
     M3Result result;
 
-    ESP_LOGI(TAG, "Loading WebAssembly (mod: %s, p: %p, %d bytes)...\n", name, (void*)wasm, wasm_len);
+    ESP_LOGI(TAG, "Loading WebAssembly (mod: %s, p: %p, %d bytes)...\n", task->name, (void*)task->data, task->data_len);
     IM3Environment env = m3_NewEnvironment ();
         if (env == NULL) {
         ESP_LOGI(TAG, "NewEnvironment failed");
@@ -250,7 +276,7 @@ int wasm_run(char* name, uint8_t* wasm, uint32_t wasm_len) {
     }
 
     IM3Module module;
-    result = m3_ParseModule (env, &module, wasm, wasm_len);
+    result = m3_ParseModule (env, &module, task->data, task->data_len);
     if (result) {
         ESP_LOGI(TAG, "ParseModule: %s", result);
         wasm_res = -3;
@@ -276,11 +302,11 @@ int wasm_run(char* name, uint8_t* wasm, uint32_t wasm_len) {
     }
     
 #endif
-    char* wasi = "wasi_unstable";
-
     m3_LinkEspWASI(module);
 
-    char* idk = "env";
+    const char* idk = "env";
+    m3_LinkRawFunction (module, idk, "arg_get", "i(ii**)", &m3_arg_get);
+
     m3_LinkRawFunction (module, idk, "log_write", "i(*i)", &m3_log_write);
 #if 1
     m3_LinkRawFunction (module, idk, "delay_ms", "i(i)", &m3_delay_ms);
@@ -294,7 +320,7 @@ int wasm_run(char* name, uint8_t* wasm, uint32_t wasm_len) {
 #endif
 
     IM3Function f;
-    result = m3_FindFunction (&f, runtime, "_start");
+    result = m3_FindFunction (&f, runtime, "main");
     if (result) {
         ESP_LOGI(TAG, "FindFunction: %s", result);
         wasm_res = -6;
@@ -302,14 +328,28 @@ int wasm_run(char* name, uint8_t* wasm, uint32_t wasm_len) {
         goto teardown_start;
     }
 
-    const char* i_argv[2] = { "test.wasm", NULL };
-    result = m3_CallWithArgs (f, 1, i_argv);
+    PrintFuncTypeSignature(f->funcType);
+    printf("\r\n");
+
+    char m_count[16];
+    snprintf(m_count, sizeof(m_count), "%d", task->arg_count);
+
+    char m_addr[16];
+    snprintf(m_addr, sizeof(m_addr), "%d", (uint32_t)task);
+
+    printf("arg count: %d loc: %p\r\n", task->arg_count, task);
+
+    const char* i_argv[3] = { m_count, m_addr, NULL };
+    result = m3_CallWithArgs (f, 2, i_argv);
     if (result) {
         ESP_LOGI(TAG, "CallWithArgs: %s", result);
         wasm_res = -7;
 
         goto teardown_start;
-    } 
+    }
+
+    // TODO: why does this fault?
+    //wasm_res = *(int32_t*)(runtime->stack); 
 
 teardown_start:
     m3_FreeRuntime(runtime);
