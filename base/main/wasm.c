@@ -28,7 +28,7 @@
 #define TAG "WASM"
 
 // Seems we need quite a lot of stack for this task...
-#define STACK_SIZE  (32 * 1024)
+#define STACK_SIZE  (40 * 1024)
 
 void vWasmTask( void * pvParameters );
 int wasm_run(WasmTask_t* wasmTask);
@@ -74,7 +74,7 @@ m3ApiRawFunction(m3_arg_get)
 
     WasmTask_t* task = (char**) ptr;
 
-    ESP_LOGI(TAG, "m3_arg_get addr: 0x%08x task: %p i: %x v: %s max: %d\r\n", ptr, task, index, task->args[index], buff_len[0]);
+    //ESP_LOGI(TAG, "m3_arg_get addr: 0x%08x task: %p i: %x v: %s max: %d\r\n", ptr, task, index, task->args[index], buff_len[0]);
 
     int32_t res = strncpy((char*) buff, task->args[index], buff_len[0]);
     buff_len[0] = res;
@@ -97,6 +97,25 @@ m3ApiRawFunction(m3_log_write)
 
     //buff[buff_len-1] = '\0';
     fwrite(buff, 1, buff_len, stdout);
+
+    m3ApiReturn(__WASI_ESUCCESS);
+}
+
+m3ApiRawFunction(m3_value_write)
+{
+    // Load arguments
+    m3ApiReturnType  (uint32_t)
+    m3ApiGetArgMem   (uint8_t*, name)
+    m3ApiGetArg      (uint32_t, name_len)
+    m3ApiGetArg      (uint32_t, value)
+
+    // Check args are valid
+    if (runtime == NULL ) { m3ApiReturn(__WASI_EINVAL); }
+
+    char buff[32];
+    strncpy(buff, (char*)name, name_len);
+
+    printf("Data: %s value: %d\r\n", buff, value);
 
     m3ApiReturn(__WASI_ESUCCESS);
 }
@@ -149,7 +168,7 @@ m3ApiRawFunction(m3_i2c_init)
     // Check args are valid
     if (runtime == NULL) { m3ApiReturn(__WASI_EINVAL); }
 
-    ESP_LOGI(TAG, "I2C init port: %d freq: %d sda: %d scl: %d\r\n", i2c_port, freq, sda, scl);
+    //ESP_LOGI(TAG, "I2C init port: %d freq: %d sda: %d scl: %d\r\n", i2c_port, freq, sda, scl);
 
     int32_t res = i2c_init(i2c_port, freq, sda, scl);
 
@@ -166,7 +185,7 @@ m3ApiRawFunction(m3_i2c_deinit)
     // Check args are valid
     if (runtime == NULL) { m3ApiReturn(__WASI_EINVAL); }
 
-    ESP_LOGI(TAG, "I2C deinit port: %d\r\n", i2c_port);
+    //ESP_LOGI(TAG, "I2C deinit port: %d\r\n", i2c_port);
 
     int32_t res = i2c_deinit(i2c_port);
 
@@ -186,7 +205,7 @@ m3ApiRawFunction(m3_i2c_write)
     // Check args are valid
     if (runtime == NULL) { m3ApiReturn(__WASI_EINVAL); }
 
-    ESP_LOGI(TAG, "I2C write port: %d addr: %x, %p %d bytes\r\n", i2c_port, address, data_out, data_out_len);
+    //ESP_LOGI(TAG, "I2C write port: %d addr: 0x%x, %p %d bytes\r\n", i2c_port, address, data_out, data_out_len);
 
     int32_t res = i2c_write(i2c_port, address, data_out, data_out_len);
 
@@ -206,9 +225,9 @@ m3ApiRawFunction(m3_i2c_read)
     // Check args are valid
     if (runtime == NULL) { m3ApiReturn(__WASI_EINVAL); }
 
-    ESP_LOGI(TAG, "I2C read port: %d addr: %x, %p %d bytes\r\n", i2c_port, address, data_in, data_in_len);
+    //ESP_LOGI(TAG, "I2C read port: %d addr: 0x%x, %p %d bytes\r\n", i2c_port, address, data_in, data_in_len);
 
-    int32_t res = i2c_write(i2c_port, address, data_in, data_in_len);
+    int32_t res = i2c_read(i2c_port, address, data_in, data_in_len);
 
     m3ApiReturn(res);
 }
@@ -228,7 +247,7 @@ m3ApiRawFunction(m3_i2c_write_read)
     // Check args are valid
     if (runtime == NULL) { m3ApiReturn(__WASI_EINVAL); }
 
-    ESP_LOGI(TAG, "I2C write_read port: %d addr: %x, out: %p %d bytes, in: %p %d bytes\r\n", i2c_port, address, data_out, data_out_len, data_in, data_in_len);
+    //ESP_LOGI(TAG, "I2C write_read port: %d addr: %x, out: %p %d bytes, in: %p %d bytes\r\n", i2c_port, address, data_out, data_out_len, data_in, data_in_len);
 
     int32_t res = i2c_write_read(i2c_port, address, data_out, data_out_len, data_in, data_in_len);
 
@@ -308,6 +327,7 @@ int wasm_run(WasmTask_t* task) {
     m3_LinkRawFunction (module, idk, "arg_get", "i(ii**)", &m3_arg_get);
 
     m3_LinkRawFunction (module, idk, "log_write", "i(*i)", &m3_log_write);
+    m3_LinkRawFunction (module, idk, "value_write", "i(*ii)", &m3_log_write);
 #if 1
     m3_LinkRawFunction (module, idk, "delay_ms", "i(i)", &m3_delay_ms);
     m3_LinkRawFunction (module, idk, "get_ticks", "i(*)", &m3_get_tick);
@@ -328,16 +348,14 @@ int wasm_run(WasmTask_t* task) {
         goto teardown_start;
     }
 
-    PrintFuncTypeSignature(f->funcType);
-    printf("\r\n");
-
+    // We convert the arg count and a task pointer to strings
+    // to pass into the runtime which then converts them to integers...
+    // See https://github.com/wasm3/wasm3/issues/41#issuecomment-582394114
     char m_count[16];
     snprintf(m_count, sizeof(m_count), "%d", task->arg_count);
 
     char m_addr[16];
     snprintf(m_addr, sizeof(m_addr), "%d", (uint32_t)task);
-
-    printf("arg count: %d loc: %p\r\n", task->arg_count, task);
 
     const char* i_argv[3] = { m_count, m_addr, NULL };
     result = m3_CallWithArgs (f, 2, i_argv);

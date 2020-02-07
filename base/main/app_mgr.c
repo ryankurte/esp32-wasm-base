@@ -300,7 +300,7 @@ esp_err_t app_status_handler(httpd_req_t *req) {
 }
 
 esp_err_t app_cmd_handler(httpd_req_t *req) {
-    int res;
+    int res = 0;
 
     // Fetch query length
     size_t buf_len = httpd_req_get_url_query_len(req) + 1;
@@ -321,22 +321,14 @@ esp_err_t app_cmd_handler(httpd_req_t *req) {
     }
 
     char cmd[64] = {0};
-    res = httpd_query_key_value(buf, "cmd", cmd, sizeof(cmd));
-    if (res == ESP_OK) {
-        ESP_LOGI(TAG, "Found command: %s", cmd);
-    }
+    httpd_query_key_value(buf, "cmd", cmd, sizeof(cmd));
 
     char name[64] = {0};
-    res = httpd_query_key_value(buf, "name", name, sizeof(name));
-    if (res == ESP_OK) {
-        ESP_LOGI(TAG, "Found name: %s", name);
-    }
+    httpd_query_key_value(buf, "name", name, sizeof(name));
 
     char file[64] = {0};
-    res = httpd_query_key_value(buf, "file", file, sizeof(file));
-    if (res == ESP_OK) {
-        ESP_LOGI(TAG, "Found file: %s", file);
-    }
+    httpd_query_key_value(buf, "file", file, sizeof(file));
+
 
     if (strcmp(cmd, "load") == 0) {
         if (file[0] == 0 || name[0] == 0 ) {

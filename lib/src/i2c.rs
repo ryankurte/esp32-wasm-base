@@ -18,7 +18,7 @@ impl WasmI2c {
         }
     }
 
-    pub fn deinit(self) {
+    pub fn deinit(&mut self) {
         unsafe {
             runtime::i2c_deinit(self.0);
         }

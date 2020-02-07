@@ -20,7 +20,6 @@ use sensor_scd30::Scd30;
 const SCD_SDA: u32 = 26;
 const SCD_SCL: u32 = 23;
 
-
 #[no_mangle]
 pub extern fn main(argc: u32, argv: u32) -> i32 {
     // Init logger
@@ -31,7 +30,7 @@ pub extern fn main(argc: u32, argv: u32) -> i32 {
 
     info!("Hello ESP32 from rust-esp32-wasm!");
 
-    // Fetch args
+    // Fetch args (this... requires some wasm magic)
     let mut args = esp32.args(argc, argv);
     for i in 0..args.count() {
         if let Some(v) = args.get(i) {
@@ -39,6 +38,7 @@ pub extern fn main(argc: u32, argv: u32) -> i32 {
         }
     }
 
+    // Bind our I2C port
     let i2c0 = match esp32.i2c_init(0, 100_000, SCD_SDA, SCD_SCL) {
         Some(v) => v,
         None => {
@@ -47,6 +47,9 @@ pub extern fn main(argc: u32, argv: u32) -> i32 {
         }
     };
 
+    info!("Connecting to sensor");
+
+    // Create an SCD30 device
     let mut scd = match Scd30::new(i2c0) {
         Ok(v) => v,
         Err(_e) => {
@@ -55,19 +58,39 @@ pub extern fn main(argc: u32, argv: u32) -> i32 {
         }
     };
 
-    scd.start_continuous(10).unwrap();
+    // Enable continuous mode
+    match scd.start_continuous(10) {
+        Ok(_) => (),
+        Err(_e) => {
+            error!("Error setting continuous mode");
+            return -3;
+        }
+    }
 
-    for i in 0..2 {
+    info!("Starting sense loop");
+
+    for _i in 0..10 {
+        // Fetch tick count
         let t = esp32.get_ticks_ms();
-        info!("tick {} ({})!", t, i);
 
-        if scd.data_ready().unwrap() {
-            let m = scd.read_data().unwrap();
-            info!("Temp: {} Humid: {} CO2: {}", m.temp, m.rh, m.co2);
+        // Wait for data ready
+        match scd.data_ready() {
+            Err(_e) => continue,
+            Ok(false) => continue,
+            _ => (),
+        }
+        
+        // Attempt to read data
+        if let Ok(m) = scd.read_data() {
+            info!("Tick {} Temp: {} Humid: {} CO2: {}", t, m.temp as u8, m.rh as u8, m.co2 as u16);
         }
 
-        esp32.delay_ms(1000);
+        esp32.delay_ms(2000);
     }
+
+    info!("Exiting");
+
+    let _ = scd.stop_continuous();
 
     return 0;
 }

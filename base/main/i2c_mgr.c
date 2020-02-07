@@ -11,7 +11,7 @@
 #define TAG "I2C_MGR"
 
 #define WRITE_BIT I2C_MASTER_WRITE  /*!< I2C master write */
-#define READ_BIT I2C_MASTER_READ    /*!< I2C master read */
+#define READ_BIT  I2C_MASTER_READ    /*!< I2C master read */
 #define ACK_CHECK_EN 0x1            /*!< I2C master will check ack from slave*/
 #define ACK_CHECK_DIS 0x0           /*!< I2C master will not check ack from slave */
 #define ACK_VAL 0x0                 /*!< I2C ack value */
@@ -35,11 +35,13 @@ static esp_err_t i2c_get_port(uint32_t port, i2c_port_t *i2c_port) {
 }
 
 // TODO: track which I2C is used / unused, return errors on attempted duplication (but allow reconfiguration?)
+static bool driver_installed[2] = {false, false};
 
 int i2c_init(uint32_t port, uint32_t freq, uint32_t sda, uint32_t scl) {
+    int res = 0;
     
     i2c_config_t conf;
-
+    
     i2c_port_t i2c_port;
     if( i2c_get_port(port, &i2c_port) != ESP_OK ) {
         return ESP_FAIL;
@@ -56,13 +58,20 @@ int i2c_init(uint32_t port, uint32_t freq, uint32_t sda, uint32_t scl) {
     i2c_param_config(port, &conf);
 
     // Install driver
-    esp_err_t res = i2c_driver_install(port, conf.mode, 0, 0, 0);
+    // TODO: do not attempt to reinstall driver if already installed..?
+    if (driver_installed[port] == false) {
+        res = i2c_driver_install(i2c_port, conf.mode, 0, 0, 0);
+
+        driver_installed[port] = true;
+    }
+
 
     return res;
 }
 
 int i2c_deinit(uint32_t port) {
     i2c_port_t i2c_port;
+
     if( i2c_get_port(port, &i2c_port) != ESP_OK ) {
         return ESP_FAIL;
     }

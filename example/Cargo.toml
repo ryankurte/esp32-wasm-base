@@ -11,7 +11,7 @@ log = "0.4.8"
 panic-abort = "0.3.2"
 libc = "0.2.66"
 embedded-hal = "0.2.3"
-sensor-scd30 = { version = "0.2.0", default-features = false }
+sensor-scd30 = { version = "0.3.0", default-features = false }
 
 [dependencies.esp32-wasm-hal]
 path = "../lib"
