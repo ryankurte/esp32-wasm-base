@@ -19,6 +19,8 @@
 #include "m3_exception.h"
 #include "extra/wasi_core.h"
 
+#include "m3_api_esp_wasi.h"
+
 #include "i2c_mgr.h"
 
 
@@ -272,7 +274,12 @@ int wasm_run(char* name, uint8_t* wasm, uint32_t wasm_len) {
         ESP_LOGI(TAG, "LinkEspWASI: %s", result);
         return -5;
     }
+    
 #endif
+    char* wasi = "wasi_unstable";
+
+    m3_LinkEspWASI(module);
+
     char* idk = "env";
     m3_LinkRawFunction (module, idk, "log_write", "i(*i)", &m3_log_write);
 #if 1
@@ -287,7 +294,7 @@ int wasm_run(char* name, uint8_t* wasm, uint32_t wasm_len) {
 #endif
 
     IM3Function f;
-    result = m3_FindFunction (&f, runtime, "main");
+    result = m3_FindFunction (&f, runtime, "_start");
     if (result) {
         ESP_LOGI(TAG, "FindFunction: %s", result);
         wasm_res = -6;
@@ -295,8 +302,8 @@ int wasm_run(char* name, uint8_t* wasm, uint32_t wasm_len) {
         goto teardown_start;
     }
 
-    const char* i_argv[2] = { "1", "test.wasm", NULL };
-    result = m3_CallWithArgs (f, 2, i_argv);
+    const char* i_argv[2] = { "test.wasm", NULL };
+    result = m3_CallWithArgs (f, 1, i_argv);
     if (result) {
         ESP_LOGI(TAG, "CallWithArgs: %s", result);
         wasm_res = -7;

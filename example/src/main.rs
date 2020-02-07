@@ -24,7 +24,16 @@ use sensor_scd30::{Scd30};
 const SCD_SDA: u32 = 26;
 const SCD_SCL: u32 = 23;
 
-
+// TODO: the wasm32-wasi target should generate this for us
+// but something is not currently correct, so, we're manual for now.
+#[no_mangle] 
+pub extern fn _start() {
+    let argc = 0;
+    let argv = [];
+    // TODO: we should be able to retrieve argc and argv?
+    let _res = main(argc, argv.as_ptr());
+    // TODO: push return
+}
 
 #[no_mangle] 
 pub extern fn main(argc: i32, _argv: *const *const u8) -> i32 {
