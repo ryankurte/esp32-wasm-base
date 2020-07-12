@@ -3,27 +3,28 @@
 
 ### What is this?
 
-Well, it's [WebAssembly](https://webassembly.org/) running in [wasm3](https://github.com/wasm3/wasm3) on an [esp32](https://www.espressif.com/en/products/hardware/esp32/overview) with live-reloading over the network and an [embedded-hal](https://github.com/rust-embedded/embedded-hal/) implementation inside the runtime.
+Well, it's [WebAssembly](https://webassembly.org/) running in [wasm3](https://github.com/wasm3/wasm3) on an [esp32](https://www.espressif.com/en/products/hardware/esp32/overview) with an API for live application loading and execution over the network and an [embedded-hal](https://github.com/rust-embedded/embedded-hal/) compatible implementation inside the runtime.
+
+You may also be interested in:
+
+- [esp32-wasm-cli](https://github.com/ryankurte/esp32-wasm-cli) - a CLI tool for loading and running WASM appletts using this project
+- [rust-wasm-hal](https://github.com/ryankurte/rust-wasm-hal) - an [embedded-hal](https://github.com/rust-embedded/embedded-hal/) implementation with examples for use with this project
 
 
 ### Why,, is this?
 
 Extremely good question. The majority of ESP32 devices in my life run _almost_ the same firmeware, with a bunch of code to manage the wifi / mqtt / file and key storage etc., then a _small_ amount of code to interact with an actual sensor or actuator and publish that information. Also, I want to be able to deploy changes over the network without really thinking about it, and, I really like embedded rust...
 
-The goal is to provide a common base image that provides all common functionality and re-exposes anything useful to the wasm runtime for application code, remote reloading of applications, and a Hardware Abstraction Layer (HAL) that makes it super easy to write and deploy applications. At the moment this is focussed on Rust, however, the WASM API should be broadly useful to other languages. Feel free to open a PR with a HAL for your favourite language!
+The goal is to provide a common base image that provides all common functionality and re-exposes anything useful to the wasm runtime for application code, remote reloading of applications, and a Hardware Abstraction Layer (HAL) that makes it super easy to write and deploy applications. At the moment this is focussed on Rust, however, the WASM API should be broadly useful to other languages. Feel free to implement a HAL for your favourite language!
 
-
-## Components
-
-- [lib/](lib/) the `esp32-wasm-hal` crate providing support for WASM applications
-- [cli/](cli/) the `esp32-wasm-cli` tool providing helpers for interacting with an `esp32-wasm-rust` target.
-- [base/](base/) the base C application / supporting runtime for the ESP32
-- [example/](example) an example application using `esp32-wasm` for execution under the base 
 
 
 ## Status / Features
 
-Absolutely cursed and a mostly untested work in progress, 
+Absolutely cursed and a mostly untested work in progress. WASM and HTTP APIs need to be defined / documented, specification of applets and arguments should be expanded, and plent of components are yet to be implemented.
+
+
+### Components:
 
 - [ ] WASM Drivers
   - [x] delay
@@ -51,18 +52,16 @@ Absolutely cursed and a mostly untested work in progress,
 
 ## Usage
 
+You'll need the ESP32 toolchains and IDF to develop the C project. If you're on linux, you can use a preconfigued docker image with `docker run --rm -it -v`pwd`:/work --workdir=/work --device=/dev/ttyUSB0 espressif/idf`. Non-linux users will have to follow the [ESP IDF Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/).
 
-### the Rust parts
+The wasm API is defined in [wasm.c](https://github.com/ryankurte/rust-esp32-wasm/blob/master/base/main/wasm.c).
 
-You'll need the `wasm-unknown-unknown` rust target installed, as well as `wasm-opt` from [binaryen](https://github.com/WebAssembly/binaryen) to strip debug symbols, check out the [example](https://github.com/ryankurte/rust-esp32-wasm/tree/master/example) to get started.
+- `idf.py build` to build 
+- `idf.py flash` to flash
+- `idf.py monitor` to connect to the serial point
 
-The rust API is exposed using the [esp32-wasm](https://github.com/ryankurte/rust-esp32-wasm/tree/master/lib) crate.
 
-- Build with `cargo build --release`
-- Optimize with: `wasm-opt -Oz -o test.wasm --strip-debug --strip-dwarf /media/tmp/wasm32-unknown-unknown/release/esp32-wasm-example.wasm`
-- _Optional_ Check sizes with `twiggy top -n 21 test.wasm` and `twiggy dominators test.wasm`
-
-Interaction is supported via the serial terminal or via simple HTTP api:
+Running and managing applets is supported via the serial terminal (try `help` for a command list) or via simple HTTP api:
 
 - Load the binary to the device with `curl "http://ESP_IP/fs?file=/spiffs/test.wasm" -X POST --data-binary @test.wasm`
 - Load the task to memory with `curl "http://ESP_IP/app/cmd?cmd=load&name=test&file=/spiffs/test.wasm"`
@@ -70,17 +69,7 @@ Interaction is supported via the serial terminal or via simple HTTP api:
 - _Optional_ stop the task with `curl "http://ESP_IP/app/cmd?cmd=stop"`
 - Unload the task from memory with `curl "http://ESP_IP/app/cmd?cmd=unload"`
 
-
-
-### The base / C Project
-
-You'll need the ESP32 toolchains and IDF to develop the C project. If you're on linux, you can use a preconfigued docker image with `docker run --rm -it -v`pwd`:/work --workdir=/work --device=/dev/ttyUSB0 ryankurte/esp32`. Non-linux users will have to follow the [ESP IDF Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/).
-
-The wasm API is defined in [wasm.c](https://github.com/ryankurte/rust-esp32-wasm/blob/master/base/main/wasm.c).
-
-- `idf.py build` to build 
-- `idf.py flash` to flash
-- `idf.py monitor` to connect to the serial point
+It is intended that this API be a) documented and b) replaced by [esp32-wasm-cli](https://github.com/ryankurte/esp32-wasm-cli)
 
 
 ## Notes
