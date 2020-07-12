@@ -3,6 +3,7 @@
 cmake_minimum_required(VERSION 3.5)
 
 set(EXTRA_COMPONENT_DIRS
+  "modules/config"
   "modules/networking"
   "modules/comms"
   "modules/runtime"

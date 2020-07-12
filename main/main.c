@@ -21,10 +21,12 @@
 #include "app_mgr.h"
 #include "console.h"
 
+#include "config_mgr.h"
+
 
 void app_main(void)
 {
-    printf("Hello world!\n");
+    printf("Starting ESP32-WASM-BASE\n");
 
     /* Print chip information */
     esp_chip_info_t chip_info;
@@ -39,18 +41,26 @@ void app_main(void)
     printf("%dMB %s flash\n", spi_flash_get_chip_size() / (1024 * 1024),
             (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "embedded" : "external");
 
+    // Initialising networking
     ESP_ERROR_CHECK( nvs_flash_init() );
     tcpip_adapter_init();
     ESP_ERROR_CHECK( esp_event_loop_create_default() );
 
     // Initialise components
 
+    // Setup console
+    CONSOLE_init();
+
+    // Configuration manager
+    CONFIG_MGR_init();
+    CONFIG_MGR_register_commands();
+
+
     // HTTP server
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     httpd_handle_t server = NULL;
     ESP_ERROR_CHECK( httpd_start(&server, &config) );
 
-    CONSOLE_init();
 
     WIFI_MGR_init();
     WIFI_MGR_register_commands();
@@ -61,6 +71,7 @@ void app_main(void)
     APP_MGR_init();
     APP_MGR_register_commands();
     APP_MGR_register_http(server);
+
 
     // Run the console
     CONSOLE_run();

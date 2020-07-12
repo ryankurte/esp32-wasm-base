@@ -8,7 +8,7 @@
 #include "esp_vfs_dev.h"
 
 void CONSOLE_init() {
-        // Disable stdin buffering
+    // Disable stdin buffering
     setvbuf(stdin, NULL, _IONBF, 0);
 
     // Set line endings and return behaviour
@@ -42,9 +42,13 @@ void CONSOLE_init() {
     // Initialise completion
     linenoiseSetMultiLine(1);
     linenoiseHistorySetMaxLen(100);
+
 }
 
 void CONSOLE_run() {
+
+    esp_console_register_help_command();
+    
     // TODO: move this into a task
 
     const char* prompt = "> ";
@@ -74,6 +78,7 @@ void CONSOLE_run() {
         } else if (err != ESP_OK) {
             printf("Internal error: %s\n", esp_err_to_name(err));
         }
+
         /* linenoise allocates line buffer on the heap, so need to free it */
         linenoiseFree(line);
     }
